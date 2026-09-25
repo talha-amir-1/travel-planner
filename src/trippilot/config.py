@@ -31,7 +31,6 @@ class Settings(BaseSettings):
 
     # External APIs
     serpapi_api_key: SecretStr | None = Field(None, alias="SERPAPI_API_KEY")
-    opentripmap_api_key: SecretStr | None = Field(None, alias="OPENTRIPMAP_API_KEY")
     tavily_api_key: SecretStr | None = Field(None, alias="TAVILY_API_KEY")
 
     @property

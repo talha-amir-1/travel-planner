@@ -36,7 +36,8 @@ deployment), not just a chatbot or a RAG demo.
 | Currency conversion | **Frankfurter** (ECB rates) | No |
 | Attractions / POIs | OpenTripMap or Overpass (OSM) | Free key / No |
 | Web search (events, tips) | Tavily or DuckDuckGo | Free key / No |
-| Flights & hotels search | SerpAPI (Google Flights / Hotels) — **fallback: mock data** | Free key |
+| Airports (city → IATA) | **OurAirports** open dataset (cached CSV) | No |
+| Flights & hotels search | SerpAPI (Google Flights / Hotels) — live data only | Free key |
 | Booking | **Our own mock Booking API** (FastAPI) | — |
 
 > Booking is intentionally a mock service we build ourselves: real booking APIs need
@@ -171,14 +172,14 @@ Each phase ends with something **runnable** and a **git commit**.
 **Done when:** `python -m trippilot.llm` prints a reply and a trace appears.
 
 ### Phase 1 — Tools Layer (1–2 days)
-- [ ] 1.1 `schemas.py`: `TripRequest`, `Money`, `FlightOption`, `HotelOption`, `Activity`, `WeatherSummary`, `BudgetReport`, `Itinerary`, `BookingConfirmation`
-- [ ] 1.2 `geo.py` — geocode city → lat/lon, country, IATA code
-- [ ] 1.3 `weather.py` — Open-Meteo forecast (≤16 days) or climate averages for later dates
-- [ ] 1.4 `currency.py` — Frankfurter conversion
-- [ ] 1.5 `places.py` — attractions filtered by interests
-- [ ] 1.6 `flights.py` / `hotels.py` — SerpAPI with **deterministic mock fallback** (works offline & in evals)
-- [ ] 1.7 Shared: timeouts, retries (tenacity), caching (simple TTL cache), typed errors
-- [ ] 1.8 Unit tests for every tool (mock HTTP)
+- [x] 1.1 `schemas.py`: `TripRequest`, `Money`, `FlightOption`, `HotelOption`, `Activity`, `WeatherSummary`, `BudgetReport`, `Itinerary`, `BookingConfirmation`
+- [x] 1.2 `geo.py` — geocode city → lat/lon, country; `airports.py` — nearby airports from the **OurAirports** dataset (same-country first, all big city airports, e.g. `IST,SAW`)
+- [x] 1.3 `weather.py` — Open-Meteo forecast (≤16 days) or same dates last year as an estimate
+- [x] 1.4 `currency.py` — Frankfurter (ECB), open.er-api.com for non-ECB currencies (PKR, AED…) / fallback
+- [x] 1.5 `places.py` — OSM Overpass attractions filtered by interests + dietary constraints (mirror server fallback)
+- [x] 1.6 `flights.py` / `hotels.py` — SerpAPI Google Flights / Hotels, **live data only, no mock data**
+- [x] 1.7 Shared: timeouts, retries (tenacity), caching (simple TTL cache), typed errors
+- [x] 1.8 Unit tests for every tool (mock HTTP via respx)
 
 **Done when:** each tool is callable standalone and `pytest tests/test_tools.py` passes.
 
@@ -247,7 +248,7 @@ Each phase ends with something **runnable** and a **git commit**.
 ### Phase 8 — Production Hardening (1–2 days)
 - [ ] 8.1 Input guardrails (off-topic / prompt injection in user text and tool results)
 - [ ] 8.2 Rate limiting + per-request token budget
-- [ ] 8.3 Graceful degradation: API down → mock data + a UI notice
+- [ ] 8.3 Graceful degradation: API down → clear error / partial plan + a UI notice (no fake data)
 - [ ] 8.4 Model routing: cheap model for extraction/routing, strong model for composing
 - [ ] 8.5 Structured logging, `/health` endpoint
 - [ ] 8.6 Tests for graph paths (approve, change request, over-budget replan, booking failure)
@@ -297,3 +298,4 @@ Each phase ends with something **runnable** and a **git commit**.
 |---|---|---|
 | 2026-09-25 | — | Plan created |
 | 2026-09-25 | 0 | Skeleton, uv project (py3.12), config + Gemini factory; smoke test OK. LangSmith key pending |
+| 2026-09-25 | 1 | Tools layer, 35 tests. Decision: live APIs only (no mock flights/hotels); OurAirports for airport codes |
