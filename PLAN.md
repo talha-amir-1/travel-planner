@@ -126,7 +126,8 @@ travel-planner/
 │   │   ├── weather.py
 │   │   ├── currency.py
 │   │   ├── places.py
-│   │   ├── flights.py        # real API + mock fallback
+│   │   ├── airports.py       # OurAirports dataset (city → IATA)
+│   │   ├── flights.py        # SerpAPI Google Flights
 │   │   ├── hotels.py
 │   │   └── booking.py        # client for mock booking API
 │   ├── agents/
