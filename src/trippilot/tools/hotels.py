@@ -14,21 +14,22 @@ def search_hotels(
     guests: int = 1,
     currency: str = "USD",
     max_results: int = 6,
+    max_price: float | None = None,
 ) -> list[HotelOption]:
-    """Search hotels in a destination for the given dates."""
+    """Search hotels in a destination for the given dates. max_price caps the nightly rate."""
     nights = (check_out - check_in).days
     if nights < 1:
         raise ToolError("check_out must be after check_in")
-    data = serpapi_search(
-        "google_hotels",
-        {
-            "q": f"hotels in {destination}",
-            "check_in_date": check_in.isoformat(),
-            "check_out_date": check_out.isoformat(),
-            "adults": guests,
-            "currency": currency,
-        },
-    )
+    params = {
+        "q": f"hotels in {destination}",
+        "check_in_date": check_in.isoformat(),
+        "check_out_date": check_out.isoformat(),
+        "adults": guests,
+        "currency": currency,
+    }
+    if max_price is not None:
+        params["max_price"] = int(max_price)
+    data = serpapi_search("google_hotels", params)
     options = []
     for i, p in enumerate(data.get("properties") or []):
         nightly = (p.get("rate_per_night") or {}).get("extracted_lowest")

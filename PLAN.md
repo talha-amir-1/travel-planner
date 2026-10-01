@@ -179,25 +179,30 @@ Each phase ends with something **runnable** and a **git commit**.
 - [x] 1.4 `currency.py` — Frankfurter (ECB), open.er-api.com for non-ECB currencies (PKR, AED…) / fallback
 - [x] 1.5 `places.py` — OSM Overpass attractions filtered by interests + dietary constraints (mirror server fallback)
 - [x] 1.6 `flights.py` / `hotels.py` — SerpAPI Google Flights / Hotels, **live data only, no mock data**
-- [x] 1.7 Shared: timeouts, retries (tenacity), caching (simple TTL cache), typed errors
+- [x] 1.7 Shared: timeouts, typed errors (retries & TTL caching deferred)
 - [x] 1.8 Unit tests for every tool (mock HTTP via respx)
 
 **Done when:** each tool is callable standalone and `pytest tests/test_tools.py` passes.
 
 ### Phase 2 — Single-Agent MVP (1 day)
-- [ ] 2.1 One ReAct agent with all tools (`create_agent` / prebuilt ToolNode)
-- [ ] 2.2 CLI runner: prompt in → rough plan out
+- [x] 2.1 One ReAct agent with all tools (`create_agent`) — `agents/single_agent.py`, tool wrappers in `tools/agent_tools.py`
+- [x] 2.2 CLI runner: prompt in → rough plan out (`python -m trippilot.agents.single_agent "..."`)
 - [ ] 2.3 Note its failure modes (forgets budget, too many tool calls, inconsistent output)
+  - First run (no SerpAPI key, Istanbul 5 days): 8 tool calls, ~80 s
+  - Quoted "typical" flight/hotel prices despite the "never invent prices" rule
+  - Took the heuristic activity costs at face value (e.g. a free monument at $10, Hagia Sophia at $0)
+  - Planned 6 days for a 5-night trip, and the budget table is free-form markdown, not structured
+  - Still to do: a run with a SerpAPI key to see flight/hotel choice vs budget
 
 **Done when:** a basic plan is produced end-to-end.
 **Why this phase exists:** it's the baseline for the README's *"why multi-agent"* comparison.
 
 ### Phase 3 — Multi-Agent Graph (3–4 days) ⭐ core
-- [ ] 3.1 `state.py` — `TripState`
-- [ ] 3.2 **Intake agent** — structured output → `TripRequest`; if fields are missing, asks the user (interrupt)
-- [ ] 3.3 **Supervisor** — routes to specialists; uses `Send` to run flight/hotel/activities/weather **in parallel**
-- [ ] 3.4 Specialist agents (flights, hotels, activities, weather & packing), each with only its own tools
-- [ ] 3.5 **Budget agent** — pure-Python math + LLM explanation; if over budget → targeted replan (cheaper hotel, fewer paid activities), capped by `replan_count`
+- [x] 3.1 `state.py` — `TripState`
+- [x] 3.2 **Intake agent** — structured output → `TripRequest`; if fields are missing, asks the user (interrupt). Two nodes: `intake` (LLM) + `ask_user` (interrupt only, so resuming doesn't re-call the LLM)
+- [x] 3.3 **Supervisor** — routes to specialists; uses `Send` to run flight/hotel/activities/weather **in parallel**. Runs only specialists whose result is missing, so a replan re-runs just the affected one
+- [x] 3.4 Specialist agents (flights, hotels, activities, weather), each with only its own tools. Decision: they call tools directly in Python (no LLM): inputs are fully known from `TripRequest`, so an LLM only adds cost and errors. Failures go to `state.errors` instead of crashing. Packing tips move to the composer
+- [x] 3.5 **Budget agent** — pure-Python math; picks cheapest flight + best-rated affordable hotel; food/transport are daily estimates. Over budget → drop paid sights, then replan hotels with a nightly `max_price` (only the hotel specialist re-runs), max 2 replans. Decision: no LLM here; the composer explains the budget (saves one AI call per trip)
 - [ ] 3.6 **Itinerary composer** — day-by-day plan, grouped by neighborhood, respects weather (indoor on rainy days) and opening hours
 - [ ] 3.7 `graph.py` — wire nodes, conditional edges, compile with SQLite checkpointer
 - [ ] 3.8 Export graph PNG (`graph.get_graph().draw_mermaid_png()`) for README
@@ -300,3 +305,9 @@ Each phase ends with something **runnable** and a **git commit**.
 | 2026-09-25 | — | Plan created |
 | 2026-09-25 | 0 | Skeleton, uv project (py3.12), config + Gemini factory; smoke test OK. LangSmith key pending |
 | 2026-09-25 | 1 | Tools layer, 35 tests. Decision: live APIs only (no mock flights/hotels); OurAirports for airport codes |
+| 2026-10-01 | 1 | Removed retries & TTL caching for now (to revisit later) |
+| 2026-10-01 | 2 | Single-agent baseline + CLI; first failure-mode notes |
+| 2026-10-02 | — | Split tools/_common.py into tools/errors.py + tools/http.py |
+| 2026-10-02 | 3 | State + intake agent + first graph.py (intake loop); unit-tested with a fake model. Real-model run pending: Gemini free tier is 20 requests/day |
+| 2026-10-02 | 3 | Supervisor + 4 specialists (parallel via Send). Dev rule for now: no live runs, no new tests |
+| 2026-10-02 | 3 | Budget agent + replan loop (budget → supervisor → hotels → budget) |
