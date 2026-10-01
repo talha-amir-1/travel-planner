@@ -4,7 +4,8 @@ currencies the ECB doesn't publish (PKR, AED, SAR, ...) or when Frankfurter is d
 import logging
 
 from trippilot.schemas import Money
-from trippilot.tools._common import ExternalAPIError, ToolError, request_json, ttl_cache
+from trippilot.tools.errors import ExternalAPIError, ToolError
+from trippilot.tools.http import request_json
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +35,6 @@ def _open_er_rate(base: str, target: str) -> float:
         raise ToolError(f"Unsupported currency: {target}") from e
 
 
-@ttl_cache(ttl=3600)
 def get_rate(base: str, target: str) -> float:
     """Units of `target` per 1 unit of `base`."""
     base, target = base.upper(), target.upper()

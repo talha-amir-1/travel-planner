@@ -3,7 +3,8 @@
 from typing import Any
 
 from trippilot import config
-from trippilot.tools._common import ExternalAPIError, request_json
+from trippilot.tools.errors import ExternalAPIError
+from trippilot.tools.http import request_json
 
 SERPAPI_URL = "https://serpapi.com/search.json"
 

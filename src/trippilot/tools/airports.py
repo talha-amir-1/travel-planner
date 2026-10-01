@@ -12,7 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from trippilot.config import PROJECT_ROOT
-from trippilot.tools._common import ExternalAPIError, _request
+from trippilot.tools.errors import ExternalAPIError
+from trippilot.tools.http import request
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class Airport:
 
 def _download(path: Path) -> None:
     try:
-        response = _request("GET", AIRPORTS_URL, timeout=60)
+        response = request("GET", AIRPORTS_URL, timeout=60)
     except Exception as e:
         raise ExternalAPIError("ourairports", f"download failed: {e}") from e
     path.parent.mkdir(parents=True, exist_ok=True)

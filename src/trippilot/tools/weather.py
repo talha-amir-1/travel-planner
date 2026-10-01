@@ -3,7 +3,7 @@
 from datetime import date, timedelta
 
 from trippilot.schemas import DailyWeather, WeatherSummary
-from trippilot.tools._common import request_json, ttl_cache
+from trippilot.tools.http import request_json
 
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
@@ -53,7 +53,6 @@ def _parse_daily(daily: dict, dates: list[date]) -> list[DailyWeather]:
     return days
 
 
-@ttl_cache(ttl=3 * 3600)
 def get_weather(
     latitude: float,
     longitude: float,

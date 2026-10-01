@@ -6,7 +6,8 @@ import pytest
 
 from trippilot.schemas import Money
 from trippilot.tools import airports, currency, flights, geo, hotels, places, weather
-from trippilot.tools._common import ExternalAPIError, NotFoundError, ToolError, request_json
+from trippilot.tools.errors import ExternalAPIError, NotFoundError, ToolError
+from trippilot.tools.http import request_json
 
 ISTANBUL = {
     "name": "Istanbul", "latitude": 41.01, "longitude": 28.95,
@@ -18,27 +19,18 @@ SERPAPI_URL = "https://serpapi.com/search.json"
 # --- shared plumbing ---------------------------------------------------------
 
 
-def test_request_json_retries_server_errors(isolated_tools):
-    route = isolated_tools.get("https://api.test/x").mock(
-        side_effect=[httpx.Response(503), httpx.Response(200, json={"ok": True})]
-    )
-    assert request_json("test", "https://api.test/x") == {"ok": True}
-    assert route.call_count == 2
-
-
-def test_request_json_does_not_retry_client_errors(isolated_tools):
-    route = isolated_tools.get("https://api.test/x").respond(404)
+def test_request_json_raises_on_http_error(isolated_tools):
+    route = isolated_tools.get("https://api.test/x").respond(503)
     with pytest.raises(ExternalAPIError) as exc:
         request_json("test", "https://api.test/x")
-    assert exc.value.status_code == 404
+    assert exc.value.status_code == 503
     assert route.call_count == 1
 
 
-def test_request_json_gives_up_after_three_attempts(isolated_tools):
-    route = isolated_tools.get("https://api.test/x").mock(side_effect=httpx.ConnectTimeout("t/o"))
-    with pytest.raises(ExternalAPIError):
+def test_request_json_wraps_transport_errors(isolated_tools):
+    isolated_tools.get("https://api.test/x").mock(side_effect=httpx.ConnectTimeout("t/o"))
+    with pytest.raises(ExternalAPIError, match="ConnectTimeout"):
         request_json("test", "https://api.test/x")
-    assert route.call_count == 3
 
 
 # --- airports & geo ----------------------------------------------------------
@@ -72,10 +64,9 @@ def test_airports_downloaded_when_missing(isolated_tools, tmp_path, monkeypatch)
     assert route.call_count == 1 and target.exists()
 
 
-def test_geocode_parses_and_caches(isolated_tools):
+def test_geocode_parses_results(isolated_tools):
     route = isolated_tools.get(geo.GEOCODING_URL).respond(json={"results": [ISTANBUL]})
     loc = geo.geocode("Istanbul")
-    geo.geocode("Istanbul")
     assert (loc.name, loc.country_code) == ("Istanbul", "TR")
     assert sorted(loc.airport_codes) == ["IST", "SAW"]
     assert route.call_count == 1

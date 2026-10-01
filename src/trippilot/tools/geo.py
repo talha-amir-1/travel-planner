@@ -1,13 +1,13 @@
 """Geocoding: place name -> coordinates, country and the airports serving it."""
 
 from trippilot.schemas import GeoLocation
-from trippilot.tools._common import NotFoundError, request_json, ttl_cache
 from trippilot.tools.airports import airports_near, get_airport
+from trippilot.tools.errors import NotFoundError
+from trippilot.tools.http import request_json
 
 GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 
 
-@ttl_cache(ttl=24 * 3600)
 def geocode(place: str) -> GeoLocation:
     """Geocode a place like "Istanbul" or "Paris, France" to coordinates, country and
     nearby airport codes."""

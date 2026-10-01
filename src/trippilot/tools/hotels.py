@@ -3,11 +3,10 @@
 from datetime import date
 
 from trippilot.schemas import HotelOption, Money
-from trippilot.tools._common import NotFoundError, ToolError, ttl_cache
+from trippilot.tools.errors import NotFoundError, ToolError
 from trippilot.tools.serpapi import serpapi_search
 
 
-@ttl_cache(ttl=1800)
 def search_hotels(
     destination: str,
     check_in: date,

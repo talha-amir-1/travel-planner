@@ -3,7 +3,7 @@
 from datetime import date, datetime
 
 from trippilot.schemas import FlightOption, FlightSegment, Money
-from trippilot.tools._common import NotFoundError, ttl_cache
+from trippilot.tools.errors import NotFoundError
 from trippilot.tools.geo import resolve_airports
 from trippilot.tools.serpapi import serpapi_search
 
@@ -21,7 +21,6 @@ def _parse_segment(seg: dict) -> FlightSegment:
     )
 
 
-@ttl_cache(ttl=1800)
 def search_flights(
     origin: str,
     destination: str,

@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from itertools import zip_longest
 
 from trippilot.schemas import Activity, Money
-from trippilot.tools._common import ToolError, request_json, ttl_cache
+from trippilot.tools.errors import ToolError
+from trippilot.tools.http import request_json
 
 log = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ def categories_for(interests: list[str] | tuple[str, ...]) -> list[str]:
     return found or list(DEFAULT_CATEGORIES)
 
 
-def _diet_filter(constraints: tuple[str, ...]) -> str:
+def _diet_filter(constraints: list[str]) -> str:
     text = " ".join(constraints).lower()
     if "vegan" in text:
         return '["diet:vegan"~"yes|only"]'
@@ -99,7 +100,7 @@ def _diet_filter(constraints: tuple[str, ...]) -> str:
 
 
 def build_query(
-    lat: float, lon: float, categories: list[str], radius_m: int, constraints: tuple[str, ...]
+    lat: float, lon: float, categories: list[str], radius_m: int, constraints: list[str]
 ) -> str:
     diet = _diet_filter(constraints)
     around = f"(around:{radius_m},{lat},{lon})"
@@ -187,23 +188,25 @@ def _overpass(query: str) -> dict:
     raise error
 
 
-@ttl_cache(ttl=6 * 3600)
-def _search_places(
-    lat: float,
-    lon: float,
-    categories: tuple[str, ...],
-    constraints: tuple[str, ...],
-    radius_m: int,
-    limit: int,
+def search_places(
+    latitude: float,
+    longitude: float,
+    interests: list[str],
+    constraints: list[str] | None = None,
+    radius_m: int = 5000,
+    limit: int = 25,
 ) -> list[Activity]:
-    query = build_query(lat, lon, list(categories), radius_m, constraints)
+    """Find attractions, food spots etc. near a point, matched to the traveler's interests.
+    Dietary constraints ("vegetarian", "vegan") filter restaurants and cafes."""
+    categories = categories_for(interests)
+    query = build_query(latitude, longitude, categories, radius_m, constraints or [])
     data = _overpass(query)
 
     by_category: dict[str, list[tuple[float, Activity]]] = {c: [] for c in categories}
     seen: set[str] = set()
     for el in data.get("elements", []):
         tags = el.get("tags", {})
-        category = _classify(tags, list(categories))
+        category = _classify(tags, categories)
         activity = _to_activity(el, category) if category else None
         if activity is None or activity.name in seen:
             continue
@@ -215,23 +218,3 @@ def _search_places(
         for c, items in by_category.items()
     }
     return _balanced(ranked, limit)
-
-
-def search_places(
-    latitude: float,
-    longitude: float,
-    interests: list[str],
-    constraints: list[str] | None = None,
-    radius_m: int = 5000,
-    limit: int = 25,
-) -> list[Activity]:
-    """Find attractions, food spots etc. near a point, matched to the traveler's interests.
-    Dietary constraints ("vegetarian", "vegan") filter restaurants and cafes."""
-    return _search_places(
-        latitude,
-        longitude,
-        tuple(categories_for(interests)),
-        tuple(constraints or ()),
-        radius_m,
-        limit,
-    )
