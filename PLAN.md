@@ -158,7 +158,7 @@ Note: the Gemini free tier is 20 requests/day per model, so run the eval over tw
 
 ### Phase 7 — Ship & Showcase (1 day)
 - [ ] 7.1 README: demo GIF, architecture diagram, graph picture, eval table, design decisions, limitations
-- [ ] 7.2 *(optional)* Deploy on Streamlit Community Cloud (free) → live demo link
+- [x] 7.2 Deployed on Streamlit Community Cloud → https://trippilot.streamlit.app/
 - [ ] 7.3 CV bullets (below)
 
 ---

@@ -5,7 +5,7 @@ One sentence in, a full trip plan out:
 > *"Lahore to Istanbul, Dec 10-15, $1500, I love food and history, vegetarian"*
 > → flights + hotel + weather + day-by-day itinerary + budget → **you approve** → (mock) booked.
 
-**Live demo:** _link coming soon_ · Built with **LangGraph**, **LangChain**, **Gemini**, **Pydantic** and **Streamlit**.
+**[▶ Try the live demo: trippilot.streamlit.app](https://trippilot.streamlit.app/)** · Built with **LangGraph**, **LangChain**, **Gemini**, **Pydantic** and **Streamlit**.
 
 ## How it works
 
