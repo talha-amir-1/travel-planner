@@ -4,7 +4,8 @@ import pytest
 from langchain_core.runnables import RunnableLambda
 from langgraph.types import Command
 
-from trippilot.agents import intake
+from trippilot.agents import composer, intake
+from trippilot.agents.composer import ComposedPlan
 from trippilot.agents.intake import TripRequestDraft
 from trippilot.graph import build_graph
 
@@ -31,9 +32,13 @@ class FakeExtractor:
 
 
 @pytest.fixture(autouse=True)
-def apis_down(isolated_tools):
-    """These tests only check intake; specialists after it get a failing API and move on."""
+def apis_down(isolated_tools, monkeypatch):
+    """These tests only check intake; specialists after it get a failing API and move on,
+    and the composer at the end gets an empty plan instead of calling a real model."""
     isolated_tools.route().respond(503)
+    monkeypatch.setattr(
+        composer, "get_llm", lambda **kwargs: FakeExtractor(ComposedPlan(summary="", days=[]))
+    )
 
 
 @pytest.fixture
@@ -66,7 +71,7 @@ def test_complete_request_needs_no_questions(fake_llm):
     graph = build_graph()
     config = {"configurable": {"thread_id": "t1"}}
     result = graph.invoke({"messages": [("user", "Lahore to Istanbul...")]}, config)
-    assert "__interrupt__" not in result
+    assert result["__interrupt__"][0].value["type"] == "approval"  # no intake questions
     assert result["request"].destination == "Istanbul"
 
 

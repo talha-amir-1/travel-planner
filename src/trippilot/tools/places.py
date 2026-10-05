@@ -12,7 +12,8 @@ log = logging.getLogger(__name__)
 
 OVERPASS_URLS = [
     "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",  # public mirror
+    "https://overpass.kumi.systems/api/interpreter",  # public mirrors, tried in order
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ]
 
 
@@ -193,7 +194,7 @@ def search_places(
     longitude: float,
     interests: list[str],
     constraints: list[str] | None = None,
-    radius_m: int = 5000,
+    radius_m: int = 3000,  # larger areas time out on the free servers in big cities
     limit: int = 25,
 ) -> list[Activity]:
     """Find attractions, food spots etc. near a point, matched to the traveler's interests.

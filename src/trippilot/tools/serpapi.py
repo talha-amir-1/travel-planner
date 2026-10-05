@@ -3,7 +3,7 @@
 from typing import Any
 
 from trippilot import config
-from trippilot.tools.errors import ExternalAPIError
+from trippilot.tools.errors import ExternalAPIError, NotFoundError
 from trippilot.tools.http import request_json
 
 SERPAPI_URL = "https://serpapi.com/search.json"
@@ -25,5 +25,8 @@ def serpapi_search(engine: str, params: dict[str, Any]) -> dict:
         timeout=30,
     )
     if "error" in data:
+        # "hasn't returned any results" means the search worked but found nothing.
+        if "returned any results" in data["error"]:
+            raise NotFoundError(data["error"])
         raise ExternalAPIError(f"serpapi-{engine}", data["error"])
     return data

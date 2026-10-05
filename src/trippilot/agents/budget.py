@@ -8,8 +8,6 @@ Order of savings when over budget:
    which re-runs only the hotel specialist, at most MAX_REPLANS times
 """
 
-from langgraph.graph import END
-
 from trippilot.schemas import Activity, BudgetLine, BudgetReport, HotelOption, Money
 from trippilot.state import TripState
 from trippilot.tools import currency
@@ -91,8 +89,8 @@ def budget_agent(state: TripState) -> dict:
 
 
 def route_after_budget(state: TripState) -> str:
-    # hotel_options was emptied -> replan; otherwise done (next step: the composer)
-    return "supervisor" if state.get("hotel_options") is None else END
+    # hotel_options was emptied -> replan; otherwise write the itinerary
+    return "supervisor" if state.get("hotel_options") is None else "composer"
 
 
 def _plan_sights(activities: list[Activity], days: int, free_only: bool) -> list[Activity]:

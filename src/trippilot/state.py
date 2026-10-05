@@ -4,7 +4,6 @@ Every node reads what it needs from TripState and returns only the keys it chang
 LangGraph merges those updates into the state.
 """
 
-import operator
 from typing import Annotated, Literal, TypedDict
 
 from langchain_core.messages import AnyMessage
@@ -22,6 +21,13 @@ from trippilot.schemas import (
 )
 
 
+def add_or_reset(old: list | None, new: list | None) -> list:
+    """Reducer: append new items to the list; a node returning None empties it (re-plan)."""
+    if new is None:
+        return []
+    return (old or []) + new
+
+
 class TripState(TypedDict, total=False):
     # Conversation with the user; add_messages appends instead of overwriting.
     messages: Annotated[list[AnyMessage], add_messages]
@@ -36,8 +42,8 @@ class TripState(TypedDict, total=False):
     activities: list[Activity]
     weather: WeatherSummary | None
     # Failures reported by specialists, e.g. "flights: SERPAPI_API_KEY not configured".
-    # operator.add joins lists, so parallel specialists can each add errors safely.
-    errors: Annotated[list[str], operator.add]
+    # add_or_reset joins lists, so parallel specialists can each add errors safely.
+    errors: Annotated[list[str], add_or_reset]
 
     # Budget: what it picked, the cost breakdown, and replan settings
     selected_flight: FlightOption | None

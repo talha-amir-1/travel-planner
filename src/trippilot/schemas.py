@@ -209,6 +209,10 @@ class Itinerary(BaseModel):
     hotel: HotelOption | None = None
     days: list[DayPlan]
     budget_report: BudgetReport | None = None
+    packing_tips: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(
+        default_factory=list, description="Problems the traveler should know, e.g. no flights found"
+    )
 
 
 class BookingConfirmation(BaseModel):

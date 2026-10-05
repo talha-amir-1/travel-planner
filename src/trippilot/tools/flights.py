@@ -44,9 +44,17 @@ def search_flights(
     }
     if return_date:
         params["return_date"] = return_date.isoformat()
-    data = serpapi_search("google_flights", params)
+    searched = (
+        f"{origin_codes} -> {dest_codes}, {depart_date}"
+        + (f" to {return_date}" if return_date else " one way")
+        + f", {travelers} adult(s), {currency}"
+    )
+    try:
+        data = serpapi_search("google_flights", params)
+    except NotFoundError as e:
+        raise NotFoundError(f"No flights found for {searched} ({e})") from e
 
-    raw = (data.get("best_flights") or []) + (data.get("other_flights") or [])
+    raw =(data.get("best_flights") or []) + (data.get("other_flights") or [])
     options = []
     for i, item in enumerate(raw):
         if "price" not in item or not item.get("flights"):
@@ -63,5 +71,5 @@ def search_flights(
             )
         )
     if not options:
-        raise NotFoundError(f"No flights found {origin} -> {destination} on {depart_date}")
+        raise NotFoundError(f"No flights found for {searched}")
     return sorted(options, key=lambda o: o.price.amount)[:max_results]
