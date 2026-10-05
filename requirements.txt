@@ -1,0 +1,3 @@
+# For Streamlit Community Cloud. "." installs the trippilot package together with its
+# dependencies from pyproject.toml. Locally, use `uv sync` instead.
+.
