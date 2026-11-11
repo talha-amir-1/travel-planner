@@ -1,5 +1,4 @@
 from datetime import date
-from pathlib import Path
 
 import httpx
 import pytest
@@ -53,15 +52,10 @@ def test_airports_near_prefers_same_country():
     assert [a.iata for a in airports.airports_near(31.55, 74.34, country_code="PK")] == ["LHE"]
 
 
-def test_airports_downloaded_when_missing(isolated_tools, tmp_path, monkeypatch):
-    target = tmp_path / "fresh" / "airports.csv"
-    monkeypatch.setattr(airports, "CACHE_PATH", target)
-    airports.load_airports.cache_clear()
-    route = isolated_tools.get(airports.AIRPORTS_URL).respond(
-        content=(Path(__file__).parent / "data" / "airports.csv").read_bytes()
-    )
+def test_airports_downloaded_once_and_kept_in_memory(isolated_tools):
     assert "LHE" in airports.load_airports()
-    assert route.call_count == 1 and target.exists()
+    assert "IST" in airports.load_airports()
+    assert isolated_tools["airports"].call_count == 1
 
 
 def test_geocode_parses_results(isolated_tools):

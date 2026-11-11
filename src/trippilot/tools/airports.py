@@ -1,26 +1,25 @@
 """Airport lookup from the OurAirports open dataset (public domain, ~80k airports).
 
-The CSV is downloaded once, cached under .cache/ and refreshed monthly.
+The CSV is downloaded when first needed and kept in memory for the life of the process
+(nothing is written to disk, so a fresh container on a cloud host just downloads again).
 """
 
 import csv
 import functools
-import logging
+import io
 import math
-import time
+import threading
 from dataclasses import dataclass
-from pathlib import Path
 
-from trippilot.config import PROJECT_ROOT
 from trippilot.tools.errors import ExternalAPIError
 from trippilot.tools.http import request
 
-log = logging.getLogger(__name__)
-
 AIRPORTS_URL = "https://davidmegginson.github.io/ourairports-data/airports.csv"
-CACHE_PATH = PROJECT_ROOT / ".cache" / "airports.csv"
-MAX_AGE_SECONDS = 30 * 24 * 3600
 AIRPORT_TYPES = {"large_airport", "medium_airport"}
+
+# The parallel specialists (flights, weather, activities) all look up airports at once on
+# a cold start; the lock makes one thread download while the others wait for its result.
+_load_lock = threading.Lock()
 
 
 @dataclass(frozen=True)
@@ -34,48 +33,33 @@ class Airport:
     large: bool
 
 
-def _download(path: Path) -> None:
+def load_airports() -> dict[str, Airport]:
+    """IATA code -> Airport, for large/medium airports with scheduled passenger service."""
+    with _load_lock:
+        return _fetch_airports()
+
+
+@functools.cache  # a failed download is not cached, so the next call retries
+def _fetch_airports() -> dict[str, Airport]:
     try:
         response = request("GET", AIRPORTS_URL, timeout=60)
     except Exception as e:
         raise ExternalAPIError("ourairports", f"download failed: {e}") from e
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
-    tmp.write_bytes(response.content)
-    tmp.replace(path)
 
-
-def _csv_path() -> Path:
-    path = CACHE_PATH
-    if path.exists() and time.time() - path.stat().st_mtime < MAX_AGE_SECONDS:
-        return path
-    try:
-        _download(path)
-    except ExternalAPIError:
-        if not path.exists():
-            raise
-        log.warning("Could not refresh airport data; using cached copy from %s", path)
-    return path
-
-
-@functools.cache
-def load_airports() -> dict[str, Airport]:
-    """IATA code -> Airport, for large/medium airports with scheduled passenger service."""
     airports: dict[str, Airport] = {}
-    with _csv_path().open(encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            iata = row["iata_code"].strip()
-            if not iata or row["type"] not in AIRPORT_TYPES or row["scheduled_service"] != "yes":
-                continue
-            airports[iata] = Airport(
-                iata=iata,
-                name=row["name"],
-                city=row["municipality"],
-                country_code=row["iso_country"],
-                latitude=float(row["latitude_deg"]),
-                longitude=float(row["longitude_deg"]),
-                large=row["type"] == "large_airport",
-            )
+    for row in csv.DictReader(io.StringIO(response.content.decode("utf-8"))):
+        iata = row["iata_code"].strip()
+        if not iata or row["type"] not in AIRPORT_TYPES or row["scheduled_service"] != "yes":
+            continue
+        airports[iata] = Airport(
+            iata=iata,
+            name=row["name"],
+            city=row["municipality"],
+            country_code=row["iso_country"],
+            latitude=float(row["latitude_deg"]),
+            longitude=float(row["longitude_deg"]),
+            large=row["type"] == "large_airport",
+        )
     return airports
 
 
